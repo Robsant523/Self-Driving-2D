@@ -2,6 +2,34 @@
 
 This is a simplified 2D control experiment, not a photorealistic simulator or an autonomous-driving safety system. Results describe this corridor task only.
 
+## Watch it train live
+
+Add `--live` to training to open a local browser dashboard:
+
+```bash
+.venv/bin/python -m src.train --track tracks/presets/gentle_s.yaml --output results/gentle-s-live --live
+```
+
+The dashboard shows **car 1 from the actual training batch**, including exploratory actions and automatic episode resets. It is not a separate evaluation or prerecorded video. Buttons switch between **Whole track** and **Follow car**. It displays the update number, collected transitions, and the most recent rollout's reward, successes, and collisions across all cars. The image pauses during the PPO optimization phase and the dashboard labels that phase explicitly.
+
+Watched training is intentionally paced: defaults display every four simulation steps at up to ten frames per second. This makes movement visible and slows training compared with headless mode. Camera rendering transfers only the displayed lane to CPU. Training rates reported in this mode include visualization and waiting, so do not use them as simulator benchmarks. Rendering does not change actions, rewards, or the policy update; a CPU integration test verifies identical model weights with and without live viewing for a seeded short run.
+
+Useful options:
+
+```bash
+# Slower, roughly real-time car motion at the default 0.1-second timestep:
+.venv/bin/python -m src.train --track tracks/presets/gentle_s.yaml --output results/gentle-s-slow --live --live-every 1 --live-fps 10
+
+# Start with the close-up camera:
+.venv/bin/python -m src.train --track tracks/presets/gentle_s.yaml --output results/gentle-s-follow --live --camera follow
+```
+
+`--no-browser` prints the URL without opening a tab. `--live-port 8765` selects a port; otherwise a free port is chosen. The server listens only on `127.0.0.1` and serves the dashboard and training snapshots, not project files. No extra package installation is needed beyond the project requirements.
+
+When training finishes, the final frame and statistics stay available until you press **Ctrl+C in Terminal**. Ctrl+C during training also saves the current policy and closes the viewer. As with ordinary training, saved checkpoints contain model weights but not optimizer/rollout state. `--live-exit` exits immediately after training instead of keeping the dashboard available. Closing the browser tab alone does not stop training. Remove `--live` to train at normal speed.
+
+Use a new output directory for a fresh run to preserve earlier results. To watch continued learning from a trained policy, add `--resume results/gentle-s/checkpoint.pt`; this loads the weights with a fresh optimizer. Viewing an already-running headless training process is not supported; `--live` must be enabled when starting it.
+
 ## Five preset roads
 
 Ready-made courses are in [tracks/presets](tracks/presets/README.md): **Gentle S**, **Wide Sweep**, **Obstacle Slalom**, **Narrow Bends**, and **Mixed Course**. They vary road width, turns, and fixed obstacles. Start with:

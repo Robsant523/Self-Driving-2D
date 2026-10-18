@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Driving RL · Live training</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0b191e;color:#eef6f5}body{margin:0;padding:28px;max-width:1300px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:26px;margin:8px 0}p{color:#a8bec3;line-height:1.6}.tag{color:#5ee2ba;font-size:12px;letter-spacing:2px}button{background:#18343d;color:#eafafa;border:1px solid #34545f;border-radius:8px;padding:10px 16px;cursor:pointer}button[aria-pressed=true]{background:#6ee7c7;color:#09221c}#scene{display:block;width:100%;background:#102326;border-radius:12px;min-height:180px;margin:20px 0}#scene:not([src]){visibility:hidden}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{background:#142930;border:1px solid #28434b;border-radius:10px;padding:16px}.stat label{display:block;font-size:12px;color:#abc1c8;margin-bottom:8px}.stat strong{font-size:23px}#connection{font-size:13px;color:#f9ce88}footer{font-size:13px;margin-top:20px;color:#9db7bf}progress{width:100%;accent-color:#6ee7c7;margin-top:20px;height:8px}#phase{color:#6ee7c7}
+</style></head><body>
+<header><div><span class="tag">DRIVING LAB / LIVE</span><h1>Watch the policy learn</h1><div id="phase">Connecting to training…</div></div>
+<div><button id="overview" aria-pressed="true">Whole track</button> <button id="follow" aria-pressed="false">Follow car</button></div></header>
+<progress id="progress" value="0" max="1"></progress>
+<img id="scene" alt="The first car in the active training batch">
+<div class="stats">
+<div class="stat"><label>Training update</label><strong id="updates">—</strong></div>
+<div class="stat"><label>Transitions collected</label><strong id="transitions">—</strong></div>
+<div class="stat"><label>Mean step reward</label><strong id="reward">—</strong></div>
+<div class="stat"><label>Successful episodes</label><strong id="success">—</strong></div>
+<div class="stat"><label>Collisions</label><strong id="collisions">—</strong></div>
+</div><p id="context">Showing car 1 from the actual training batch. Early crashes and resets are normal.</p>
+<p id="connection" role="status"></p>
+<footer>The car pauses while PPO updates its policy. Reward and outcome statistics describe the latest completed rollout across all cars, not just the displayed car. Close this tab to hide the view; Ctrl+C in Terminal stops the process.</footer>
+<script>
+const byId=id=>document.getElementById(id);
+for(const camera of ['follow','overview'])byId(camera).onclick=async()=>{
+ try{const r=await fetch('/camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({camera})});if(!r.ok)throw Error();}
+ catch{byId('connection').textContent='Camera change failed. Check that training is still running.';}
+};
+async function poll(){
+ try{
+  const r=await fetch('/state');if(!r.ok)throw Error();const s=await r.json();
+  byId('phase').textContent=s.phase;
+  byId('updates').textContent=`${s.update??0} / ${s.total_updates??'—'}`;
+  byId('transitions').textContent=(s.transitions??0).toLocaleString();
+  byId('progress').max=s.total_updates||1;byId('progress').value=s.completed_updates||0;
+  if(s.frame)byId('scene').src='data:image/png;base64,'+s.frame;
+  if(s.metrics){byId('reward').textContent=s.metrics.mean_step_reward.toFixed(3);byId('success').textContent=`${s.metrics.successes} / ${s.metrics.completed_episodes}`;byId('collisions').textContent=s.metrics.collisions;}
+  for(const camera of ['follow','overview'])byId(camera).setAttribute('aria-pressed',String(camera===s.camera));
+  byId('context').textContent=`Showing car 1 of ${s.num_envs??'—'} actual training cars. Early crashes and automatic resets are normal.`;
+  byId('connection').textContent='';
+ }catch{byId('connection').textContent='Training connection closed. The last received frame remains visible. Check Terminal for status.';}
+ setTimeout(poll,100);
+}poll();
+</script></body></html>
