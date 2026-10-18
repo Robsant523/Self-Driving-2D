@@ -1,5 +1,7 @@
 """Top-down car and road renderer. CPU transfers live only in this module."""
+from collections import deque
 import numpy as np
+import torch
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -7,8 +9,32 @@ from matplotlib.patches import Circle, Polygon, Rectangle, FancyBboxPatch
 from matplotlib.transforms import Affine2D
 
 
+class CrashHistory:
+    """Read-only visual history; batch device-to-host transfer happens at render time."""
+    def __init__(self, count, limit=200):
+        self.count = count
+        self.cars = [deque(maxlen=limit) for _ in range(count)]
+        self.pending = deque(maxlen=4096)
+
+    def capture(self, info):
+        pose = torch.cat((info['final_pos'][:self.count],
+                          info['final_heading'][:self.count, None],
+                          info['final_steering'][:self.count, None]), -1)
+        self.pending.append((info['collision'][:self.count].clone(), pose))
+
+    def drain(self):
+        if not self.pending:
+            return
+        hits = torch.stack([entry[0] for entry in self.pending]).cpu().numpy()
+        poses = torch.stack([entry[1] for entry in self.pending]).cpu().numpy()
+        self.pending.clear()
+        for lane in range(self.count):
+            for pose in poses[:, lane][hits[:, lane]]:
+                self.cars[lane].append(tuple(pose))
+
+
 class Renderer:
-    def __init__(self, count=4, show_rays=False, camera="follow"):
+    def __init__(self, count=4, show_rays=False, camera="follow", history=None):
         if not 1 <= count <= 16:
             raise ValueError('Render 1 to 16 cars')
         if camera not in ("follow", "overview"):
@@ -16,6 +42,7 @@ class Renderer:
         self.camera = camera
         self.count = count
         self.show_rays = show_rays
+        self.history = history if history is not None else CrashHistory(count)
         cols = min(count, 2 if count <= 4 else 4)
         rows = (count + cols - 1) // cols
         self.fig, axes = plt.subplots(rows, cols, figsize=(12, 4.8 if camera == 'overview' else 7.04) if count == 1 else (6 * cols, 4 * rows), squeeze=False, dpi=100)
@@ -26,7 +53,8 @@ class Renderer:
         self.map_ax = self.fig.add_axes([.73, .76, .23, .13]) if count == 1 and camera == "follow" else None
 
     @staticmethod
-    def car(ax, x, y, heading, steering, scale=1.):
+    def car(ax, x, y, heading, steering, scale=1., crashed=False):
+        first_patch = len(ax.patches)
         transform = Affine2D().scale(scale).rotate(heading).translate(x, y) + ax.transData
         # Wheels, front wheel steering, body, glass, lights: x is the forward axis.
         for wheel_x in (-.82, .82):
@@ -36,7 +64,7 @@ class Renderer:
                                       color='#111827', transform=local + transform, zorder=7))
         ax.add_patch(FancyBboxPatch((-1.3, -.57), 2.6, 1.14,
                                    boxstyle='round,pad=0.01,rounding_size=0.22',
-                                   facecolor='#19bde3', edgecolor='#d1f6ff', linewidth=1.2,
+                                   facecolor='#b96154' if crashed else '#19bde3', edgecolor='#e5a99b' if crashed else '#d1f6ff', linewidth=1.2,
                                    transform=transform, zorder=8))
         ax.add_patch(Polygon([[-.65,-.43],[.42,-.43],[.74,-.32],[.74,.32],[.42,.43],[-.65,.43]],
                              facecolor='#132b42', edgecolor='#73d8ee', linewidth=.8,
@@ -46,7 +74,16 @@ class Renderer:
             ax.add_patch(Rectangle((1.13,yy),.12,.17,color='#fff5bd',transform=transform,zorder=10))
             ax.add_patch(Rectangle((-1.25,yy),.10,.17,color='#ff5268',transform=transform,zorder=10))
 
+        if crashed:
+            for patch in list(ax.patches)[first_patch:]:
+                patch.set_alpha(.38)
+                patch.set_zorder(5.5)
+
+    def capture(self, info):
+        self.history.capture(info)
+
     def frame(self, env, label=''):
+        self.history.drain()
         pos = env.pos[:self.count].cpu().numpy()
         heading = env.heading[:self.count].cpu().numpy()
         speed = env.speed[:self.count].cpu().numpy()
@@ -95,9 +132,19 @@ class Renderer:
                                       .5,env.cfg['width']/12,color='white' if j%2 else '#16212b',zorder=4))
             for ox, oy, radius in obstacles[i]:
                 ax.add_patch(Circle((ox,oy),radius,color='#e66f45',ec='#ffcfa5',zorder=5))
+            for cx, cy, ch, cs in self.history.cars[i]:
+                self.car(ax,cx,cy,ch,cs,min(1.,env.cfg['car_radius']/1.5),crashed=True)
             if self.show_rays:
                 for angle, distance in zip(heading[i]+offsets,rays[i]):
-                    ax.plot([x,x+np.cos(angle)*distance],[y,y+np.sin(angle)*distance],color='#7de5ef',alpha=.35,linewidth=.8,zorder=6)
+                    ax.annotate('',xy=(x+np.cos(angle)*distance,y+np.sin(angle)*distance),xytext=(x,y),
+                                arrowprops=dict(arrowstyle='->',color='#7de5ef',alpha=.5,lw=.8,mutation_scale=6),zorder=6)
+                if env.road is not None:
+                    for lookahead in (5.,12.,20.):
+                        target_x = x + lookahead
+                        target_y = np.interp(target_x,center[:,0],center[:,1])
+                        ax.annotate('',xy=(target_x,target_y),xytext=(x,y),
+                                    arrowprops=dict(arrowstyle='->',color='#ffce70',alpha=.85,lw=1.1,linestyle='--',mutation_scale=8),zorder=6)
+                        ax.plot(target_x,target_y,'o',color='#ffce70',markersize=2.5,zorder=6)
             # The displayed car fits inside the configured circular collision footprint.
             self.car(ax,x,y,heading[i],steering[i],min(1.,env.cfg['car_radius']/1.5))
             ax.text(.025,.96,f"CAR {i+1:02d}   {speed[i]*3.6:04.1f} km/h",transform=ax.transAxes,

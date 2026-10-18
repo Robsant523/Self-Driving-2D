@@ -59,7 +59,9 @@ class BatchedDrivingEnv:
             reward -= r.get("center", 0.03) * features[:, 0].square() + r.get("alignment", 0.02) * (1 - features[:, 2])
         self.last_action = action
         final_observation = self.observe()
-        info = {"collision": hit, "success": success, "final_observation": final_observation, "episode_steps": self.steps.clone()}
+        info = {"collision": hit, "success": success, "final_observation": final_observation, "episode_steps": self.steps.clone(),
+                "final_pos": self.pos.clone(), "final_heading": self.heading.clone(),
+                "final_steering": action[:, 0] * self.cfg["max_steer"]}
         # Full candidate batches keep the simulator free of .item(), .cpu(), and nonzero().
         pos, obstacles = spawn(self.n, self.cfg, self.device, self.generator, self.road)
         self.pos = torch.where(done[:, None], pos, self.pos)

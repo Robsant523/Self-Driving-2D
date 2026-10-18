@@ -4,6 +4,8 @@ import math
 from pathlib import Path
 import yaml
 
+DEFAULT_TRACK = Path(__file__).resolve().parents[1] / "tracks/presets/long_winding.yaml"
+
 
 def number(value, label):
     if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
@@ -62,5 +64,8 @@ def apply_track(cfg, path):
         fixed.append([x,y,r])
     result=deepcopy(cfg)
     result.update(width=width,length=parsed[-1][0],obstacles=len(fixed),fixed_obstacles=fixed)
+    centerline_length = sum(math.hypot(b[0]-a[0], b[1]-a[1]) for a,b in zip(parsed, parsed[1:]))
+    # Long courses need enough time to finish at a moderate fraction of max speed.
+    result['max_steps'] = max(result['max_steps'], math.ceil(centerline_length / (cfg['max_speed'] * .5 * cfg['dt'])) + 50)
     result['road']={'kind':'custom','points':parsed,'name':str(track.get('name','Custom course'))}
     return result

@@ -2,7 +2,7 @@ import argparse
 from pathlib import Path
 import imageio.v2 as imageio
 import torch
-from .tracks import apply_track
+from .tracks import DEFAULT_TRACK, apply_track
 from .common import ROOT, config
 from .evaluate import load_policy
 from .sim.env import BatchedDrivingEnv
@@ -24,10 +24,12 @@ def main():
     controls.add_argument("--random", action="store_true")
     controls.add_argument("--road-controller", action="store_true", help="Pure-pursuit reference driver, not PPO")
     p.add_argument("--camera", choices=("follow", "overview"), default="follow")
-    p.add_argument("--rays", action="store_true", help="Overlay sensor beams")
+    p.add_argument("--rays", action=argparse.BooleanOptionalAction, default=True, help="Show sensor and road-preview arrows")
     p.add_argument("--output", type=Path, default=Path("results/demo.mp4"))
     args = p.parse_args()
     if not 1 <= args.cars <= 16 or args.frames < 1: p.error("Use 1–16 cars and a positive frame count")
+    if not args.config and not args.track and not args.checkpoint:
+        args.track = DEFAULT_TRACK
     torch.set_num_threads(4); torch.manual_seed(args.seed)
     cfg = config(args.config or (ROOT / "configs/bendy.yaml" if args.track else None)); cfg["device"] = args.device
     payload, cfg = load_policy(args.checkpoint, cfg)
@@ -52,7 +54,8 @@ def main():
             action = torch.rand((env.n,2),device=env.device)*2-1 if args.random else model.act(obs, deterministic=True)[0]
             if args.road_controller:
                 action = follow_road(env)
-            obs = env.step(action)[0]
+            obs, _, _, _, info = env.step(action)
+            renderer.capture(info)
     renderer.close()
     print(args.output)
 

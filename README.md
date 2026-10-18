@@ -2,6 +2,22 @@
 
 This is a simplified 2D control experiment, not a photorealistic simulator or an autonomous-driving safety system. Results describe this corridor task only.
 
+## Default course, sensor arrows, and crash history
+
+The default CLI course is now **Long Winding**: ten deep S-bends, a 600 m finish coordinate, approximately 795 m of road, 12 m width, and no obstacles. It is an open winding road, not a closed loop. Run it without selecting a preset:
+
+```bash
+.venv/bin/python -m src.train --live --camera follow --output results/long-winding-live
+```
+
+Training, recording, and baseline evaluation select this course when no track, configuration, or checkpoint is supplied. Explicit `--config` / `--track` choices and checkpoint course snapshots take precedence. The legacy `--obstacles` workflow still uses the corridor configuration. Custom course timeouts now scale with centerline length; Long Winding receives a 1,816-step horizon with the default vehicle settings.
+
+The dashboard keeps its neutral interface while the road, grass, car, and overlays display in color. Cyan arrows show the actual ray-distance sensors. Three dashed amber arrows point to the 5 m, 12 m, and 20 m road-preview inputs supplied to road policies. These are observations, not steering commands or a planned trajectory. Use **Follow car** to see them clearly on this long course.
+
+Collisions leave faded red car markers at their pre-reset positions and headings. They survive camera switches and episode resets. Markers are visual only and do not become physical obstacles. Each displayed lane retains its most recent 200 crashes within the current run; the live view shows lane 1's crash history. Successes and timeouts do not leave markers. Recording also retains crash history and shows arrows by default; use `record --no-rays` to hide the arrows.
+
+Crash poses are captured on-device before automatic reset and transferred with the displayed frames. Rendering does not change training inputs or actions. Restart the live process after updating the code to load these features. Existing checkpoints keep their original track and timeout unless you explicitly override the track.
+
 ## Watch it train live
 
 Add `--live` to training to open a local browser dashboard:

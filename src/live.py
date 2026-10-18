@@ -9,12 +9,13 @@ import threading
 import time
 import webbrowser
 from PIL import Image
-from .sim.render import Renderer
+from .sim.render import CrashHistory, Renderer
 
 
 class LiveTrainingView:
     def __init__(self, *, camera='overview', fps=10, port=0, open_browser=True):
-        self.renderer = Renderer(1, camera=camera)
+        self.history = CrashHistory(1)
+        self.renderer = Renderer(1, camera=camera, show_rays=True, history=self.history)
         self.camera = camera
         self.period = 1 / fps
         self.last_frame = None
@@ -77,6 +78,9 @@ class LiveTrainingView:
         if open_browser:
             webbrowser.open(self.url)
 
+    def capture(self, info):
+        self.history.capture(info)
+
     def status(self, **values):
         with self.lock:
             self.state.update(values)
@@ -89,7 +93,7 @@ class LiveTrainingView:
             camera = self.camera
         if self.renderer.camera != camera:
             self.renderer.close()
-            self.renderer = Renderer(1, camera=camera)
+            self.renderer = Renderer(1, camera=camera, show_rays=True, history=self.history)
         # A read-only shallow view: avoid copying/sensing every training car for display.
         lane = copy.copy(env)
         lane.n = 1
@@ -98,7 +102,7 @@ class LiveTrainingView:
         rgb = self.renderer.frame(lane, 'live PPO training')
         output = io.BytesIO()
         Image.fromarray(rgb).save(output, format='PNG')
-        self.status(frame=base64.b64encode(output.getvalue()).decode(), camera=camera, **values)
+        self.status(frame=base64.b64encode(output.getvalue()).decode(), camera=camera, crash_count=len(self.history.cars[0]), **values)
 
     def wait(self, env):
         print('Training complete. Live view stays open; press Ctrl+C in Terminal to exit.', flush=True)

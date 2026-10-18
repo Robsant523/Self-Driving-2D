@@ -1,24 +1,55 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Driving RL · Live training</title>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Driving Lab · Live training</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#0b191e;color:#eef6f5}body{margin:0;padding:28px;max-width:1300px;margin:auto}header{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}h1{font-size:26px;margin:8px 0}p{color:#a8bec3;line-height:1.6}.tag{color:#5ee2ba;font-size:12px;letter-spacing:2px}button{background:#18343d;color:#eafafa;border:1px solid #34545f;border-radius:8px;padding:10px 16px;cursor:pointer}button[aria-pressed=true]{background:#6ee7c7;color:#09221c}#scene{display:block;width:100%;background:#102326;border-radius:12px;min-height:180px;margin:20px 0}#scene:not([src]){visibility:hidden}.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}.stat{background:#142930;border:1px solid #28434b;border-radius:10px;padding:16px}.stat label{display:block;font-size:12px;color:#abc1c8;margin-bottom:8px}.stat strong{font-size:23px}#connection{font-size:13px;color:#f9ce88}footer{font-size:13px;margin-top:20px;color:#9db7bf}progress{width:100%;accent-color:#6ee7c7;margin-top:20px;height:8px}#phase{color:#6ee7c7}
-</style></head><body>
-<header><div><span class="tag">DRIVING LAB / LIVE</span><h1>Watch the policy learn</h1><div id="phase">Connecting to training…</div></div>
-<div><button id="overview" aria-pressed="true">Whole track</button> <button id="follow" aria-pressed="false">Follow car</button></div></header>
-<progress id="progress" value="0" max="1"></progress>
-<img id="scene" alt="The first car in the active training batch">
-<div class="stats">
-<div class="stat"><label>Training update</label><strong id="updates">—</strong></div>
-<div class="stat"><label>Transitions collected</label><strong id="transitions">—</strong></div>
-<div class="stat"><label>Mean step reward</label><strong id="reward">—</strong></div>
-<div class="stat"><label>Successful episodes</label><strong id="success">—</strong></div>
-<div class="stat"><label>Collisions</label><strong id="collisions">—</strong></div>
-</div><p id="context">Showing car 1 from the actual training batch. Early crashes and resets are normal.</p>
-<p id="connection" role="status"></p>
-<footer>The car pauses while PPO updates its policy. Reward and outcome statistics describe the latest completed rollout across all cars, not just the displayed car. Close this tab to hide the view; Ctrl+C in Terminal stops the process.</footer>
+:root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#242421;background:#f5f4f1;font-synthesis:none;-webkit-font-smoothing:antialiased;--muted:#74736c;--line:#e5e3de;--surface:#fff;--ink:#242421}
+*{box-sizing:border-box}body{margin:0}button{font:inherit}button:focus-visible,a:focus-visible{outline:2px solid #53534c;outline-offset:4px}button{cursor:pointer}svg{width:17px;height:17px;flex-shrink:0}
+.topbar{height:76px;border-bottom:1px solid var(--line);background:#faf9f7}.topbar-inner{max-width:1380px;height:100%;margin:auto;padding:0 40px;display:flex;align-items:center;justify-content:space-between}.brand{display:flex;align-items:center;gap:12px;font-size:15px;font-weight:650;letter-spacing:-.3px}.brand-icon{display:grid;place-items:center;background:var(--ink);color:#fff;width:32px;height:32px;border-radius:9px}.brand-icon svg{width:20px;height:20px}.breadcrumb{display:flex;align-items:center;gap:16px;color:var(--muted);font-size:13px}.slash{color:#c5c2b9}.local-label{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:7px}
+main{max-width:1380px;margin:auto;padding:38px 40px 24px}.page-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;margin-bottom:26px}.eyebrow{font-size:10px;font-weight:650;text-transform:uppercase;letter-spacing:1.6px;color:var(--muted);margin:0 0 10px}h1{font-size:32px;line-height:1.2;letter-spacing:-1.1px;font-weight:580;margin:0 0 10px}.subtitle{font-size:14px;color:var(--muted);line-height:1.6;margin:0}.status{display:inline-flex;align-items:center;gap:8px;font-size:12px;border:1px solid #dcdad4;background:#eeede8;border-radius:30px;padding:9px 13px;white-space:nowrap;min-height:36px}.dot{width:6px;height:6px;border-radius:50%;background:#77766d}.status[data-state=active] .dot{background:#33332e;animation:breathe 2s ease-in-out infinite}.status[data-state=complete] .dot{background:#33332e}.status[data-state=offline]{color:#7d5b43;background:#f5eee7;border-color:#e5d8cb}@keyframes breathe{50%{opacity:.35}}
+.run-progress{display:flex;align-items:center;gap:20px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:15px 20px;margin-bottom:20px}.run-progress label{font-size:12px;color:#6e6c64;white-space:nowrap}.progress-wrap{flex:1;display:flex;align-items:center;gap:16px}progress{display:block;width:100%;height:5px;border:0;border-radius:20px;overflow:hidden;background:#eeede9;appearance:none}progress::-webkit-progress-bar{background:#eeede9}progress::-webkit-progress-value{background:#53534b;border-radius:20px}progress::-moz-progress-bar{background:#53534b;border-radius:20px}#progress-text{font-size:12px;color:#55544d;font-variant-numeric:tabular-nums;min-width:35px;text-align:right}
+.viewer{overflow:hidden;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:0 3px 10px #25251e03}.viewer-toolbar{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;gap:16px}.viewer-title{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:580}.viewer-title svg{color:#7a7970}.camera-controls{display:inline-flex;gap:3px;background:#f2f1ed;padding:4px;border:1px solid #e7e5df;border-radius:9px}.camera-controls button{border:0;background:transparent;color:#7a786f;font-size:12px;font-weight:550;padding:7px 12px;border-radius:6px;display:flex;align-items:center;gap:7px;transition:background .15s,color .15s}.camera-controls button svg{width:14px;height:14px}.camera-controls button:hover{color:#25251f}.camera-controls button[aria-pressed=true]{background:#fff;color:#2b2b26;box-shadow:0 1px 4px #25251e14}
+.stage{position:relative;background:#202020;border-top:1px solid #323232;border-bottom:1px solid #323232;min-height:240px;display:grid;place-items:center}.stage:has(#scene:not([src])){aspect-ratio:5/2}#scene{display:block;width:100%;height:auto;max-height:65vh;object-fit:contain;filter:none}#scene:not([src]){display:none}.empty-state{position:absolute;text-align:center;color:#b7b7b1;pointer-events:none;padding:24px}.empty-state svg{width:26px;height:26px;color:#7e7e78}.empty-state p{font-size:13px;margin:12px 0 0}.stage:has(#scene[src]) .empty-state{display:none}.viewer-caption{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 20px;color:var(--muted);font-size:11px;line-height:1.5}#context{margin:0}.sensor-legend{display:flex;flex-wrap:wrap;gap:16px;padding:0 20px 14px;color:#74736c;font-size:11px}.sensor-legend span{display:flex;align-items:center;gap:6px}.sensor-key{display:inline-block;width:15px;height:3px;background:#50b9c8;border-radius:2px}.sensor-key.preview{background:#d1a147}.sensor-key.crashes{background:#b96154;opacity:.65}.view-note{white-space:nowrap;display:flex;align-items:center;gap:6px}.view-note svg{width:13px;height:13px}
+.section-heading{display:flex;align-items:center;justify-content:space-between;margin:26px 0 12px;gap:12px}.section-heading h2{font-size:13px;font-weight:600;margin:0}.section-heading span{font-size:11px;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:19px 19px 17px;min-width:0}.stat-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-bottom:17px}.stat-label svg{width:14px;height:14px;color:#a19f95}.stat strong{display:block;font-size:25px;line-height:1.2;font-weight:550;letter-spacing:-.8px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.stat small{display:block;font-size:10px;color:#99968c;margin-top:8px}.connection:empty{display:none}.connection{font-size:12px;line-height:1.6;padding:12px 16px;background:#f1ebe4;border:1px solid #e1d4c6;color:#72563f;border-radius:9px;margin:16px 0 0}footer{display:flex;justify-content:space-between;gap:28px;font-size:11px;line-height:1.7;color:#858279;margin-top:22px;padding-top:18px;border-top:1px solid var(--line)}footer p{margin:0;max-width:730px}kbd{font-family:inherit;font-size:10px;background:#eae8e1;border:1px solid #dedbd2;border-radius:4px;padding:2px 5px;color:#615f56}.stop-note{white-space:nowrap}
+@media(min-width:1500px){main{padding-top:48px}}@media(max-width:1000px){.stats{grid-template-columns:repeat(3,minmax(0,1fr))}.stat:nth-last-child(-n+2){grid-column:auto}.local-label{display:none}}@media(max-width:650px){.topbar{height:62px}.topbar-inner{padding:0 20px}.breadcrumb{gap:10px;font-size:11px}.brand{font-size:13px}.brand-icon{width:28px;height:28px}main{padding:26px 16px 20px}.page-heading{align-items:flex-start;flex-direction:column;gap:16px;margin-bottom:20px}h1{font-size:28px}.subtitle{font-size:12px}.run-progress{padding:14px;gap:12px}.viewer-toolbar{padding:12px;flex-wrap:wrap}.viewer-caption{padding:12px}.view-note{display:none}.stage{min-height:170px}.camera-controls button{padding:7px 9px}.stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:15px}.stat strong{font-size:22px}.stat:last-child{grid-column:span 2}.section-heading span{font-size:10px}footer{flex-direction:column;gap:12px}.status{font-size:11px}.run-progress label{font-size:11px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true"><defs>
+<symbol id="icon-road" viewBox="0 0 24 24"><path d="M7 3 4 21M17 3l3 18M12 3v4m0 3v4m0 3v4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+<symbol id="icon-expand" viewBox="0 0 24 24"><path d="M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="icon-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v4m0 12v4M2 12h4m12 0h4" stroke="currentColor" stroke-width="1.6"/></symbol>
+<symbol id="icon-chart" viewBox="0 0 24 24"><path d="M4 5v15h16M7 14l4-4 4 2 5-7" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+<symbol id="icon-screen" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M9 21h6m-3-4v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></symbol>
+</defs></svg>
+<nav class="topbar" aria-label="Application"><div class="topbar-inner"><div class="breadcrumb"><div class="brand"><span class="brand-icon"><svg aria-hidden="true"><use href="#icon-road"/></svg></span>Driving Lab</div><span class="slash">/</span><span>Training workspace</span></div><span class="local-label"><svg aria-hidden="true"><use href="#icon-screen"/></svg>Local session</span></div></nav>
+<main>
+<header class="page-heading"><div><p class="eyebrow">Policy training</p><h1>Live training</h1><p class="subtitle">Watch the current policy navigate the course.</p></div><div id="status-badge" class="status" data-state="waiting"><span class="dot" aria-hidden="true"></span><span id="phase" role="status">Connecting…</span></div></header>
+<div class="run-progress"><label for="progress">Session progress</label><div class="progress-wrap"><progress id="progress" value="0" max="1"></progress><span id="progress-text">0%</span></div></div>
+<section class="viewer" aria-label="Live simulation">
+<div class="viewer-toolbar"><div class="viewer-title"><svg aria-hidden="true"><use href="#icon-screen"/></svg>Simulation view</div><div class="camera-controls" role="group" aria-label="Camera view"><button id="overview" aria-pressed="true"><svg aria-hidden="true"><use href="#icon-expand"/></svg>Whole track</button><button id="follow" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-target"/></svg>Follow car</button></div></div>
+<div class="stage"><div class="empty-state"><svg aria-hidden="true"><use href="#icon-road"/></svg><p>Waiting for the first training frame</p></div><img id="scene" alt="Car 1 driving in the active training batch"></div>
+<div class="viewer-caption"><p id="context">Car 1 · Waiting for training to begin</p><span class="view-note"><svg aria-hidden="true"><use href="#icon-target"/></svg><span id="view-label">Whole track</span></span></div>
+<div class="sensor-legend"><span><i class="sensor-key"></i>Sensor rays</span><span><i class="sensor-key preview"></i>Road preview</span><span><i class="sensor-key crashes"></i>Past crashes: <b id="crash-count">0</b></span></div>
+</section>
+<div class="section-heading"><h2>Training metrics</h2><span>Latest completed rollout · All cars</span></div>
+<section class="stats" aria-label="Training metrics">
+<div class="stat"><div class="stat-label">Training update<svg aria-hidden="true"><use href="#icon-chart"/></svg></div><strong id="updates">—</strong><small>Current / total updates</small></div>
+<div class="stat"><div class="stat-label">Transitions collected<svg aria-hidden="true"><use href="#icon-chart"/></svg></div><strong id="transitions">—</strong><small>Across the entire session</small></div>
+<div class="stat"><div class="stat-label">Mean step reward<svg aria-hidden="true"><use href="#icon-chart"/></svg></div><strong id="reward">—</strong><small>Latest completed rollout</small></div>
+<div class="stat"><div class="stat-label">Successful episodes<svg aria-hidden="true"><use href="#icon-target"/></svg></div><strong id="success">—</strong><small>Finished / completed episodes</small></div>
+<div class="stat"><div class="stat-label">Collisions<svg aria-hidden="true"><use href="#icon-target"/></svg></div><strong id="collisions">—</strong><small>Latest completed rollout</small></div>
+</section>
+<p id="connection" class="connection" role="status"></p>
+<footer><p>The car pauses while PPO updates its policy. Early crashes and automatic resets are part of learning. Closing this tab hides the viewer; training continues in Terminal.</p><p class="stop-note"><kbd>Ctrl</kbd> + <kbd>C</kbd> in Terminal to stop &amp; save</p></footer>
+</main>
 <script>
 const byId=id=>document.getElementById(id);
+let lastFrame=null;
 for(const camera of ['follow','overview'])byId(camera).onclick=async()=>{
  try{const r=await fetch('/camera',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({camera})});if(!r.ok)throw Error();}
  catch{byId('connection').textContent='Camera change failed. Check that training is still running.';}
@@ -26,16 +57,22 @@ for(const camera of ['follow','overview'])byId(camera).onclick=async()=>{
 async function poll(){
  try{
   const r=await fetch('/state');if(!r.ok)throw Error();const s=await r.json();
-  byId('phase').textContent=s.phase;
+  if(byId('phase').textContent!==s.phase)byId('phase').textContent=s.phase;
+  byId('status-badge').dataset.state=s.phase==='Training complete'?'complete':s.phase==='Collecting experience'?'active':'waiting';
   byId('updates').textContent=`${s.update??0} / ${s.total_updates??'—'}`;
   byId('transitions').textContent=(s.transitions??0).toLocaleString();
   byId('progress').max=s.total_updates||1;byId('progress').value=s.completed_updates||0;
-  if(s.frame)byId('scene').src='data:image/png;base64,'+s.frame;
+  byId('progress-text').textContent=`${Math.min(100,Math.round((s.completed_updates||0)/(s.total_updates||1)*100))}%`;
+  if(s.frame&&s.frame!==lastFrame){byId('scene').src='data:image/png;base64,'+s.frame;lastFrame=s.frame;}
   if(s.metrics){byId('reward').textContent=s.metrics.mean_step_reward.toFixed(3);byId('success').textContent=`${s.metrics.successes} / ${s.metrics.completed_episodes}`;byId('collisions').textContent=s.metrics.collisions;}
   for(const camera of ['follow','overview'])byId(camera).setAttribute('aria-pressed',String(camera===s.camera));
-  byId('context').textContent=`Showing car 1 of ${s.num_envs??'—'} actual training cars. Early crashes and automatic resets are normal.`;
+  byId('crash-count').textContent=s.crash_count??0;
+  byId('view-label').textContent=s.camera==='follow'?'Follow car':'Whole track';
+  byId('context').textContent=`Car 1 of ${s.num_envs??'—'} · Live training batch`;
   byId('connection').textContent='';
- }catch{byId('connection').textContent='Training connection closed. The last received frame remains visible. Check Terminal for status.';}
+ }catch{byId('status-badge').dataset.state='offline';byId('phase').textContent='Disconnected';byId('connection').textContent='Training connection closed. The last received frame remains visible. Check Terminal for status.';}
  setTimeout(poll,100);
 }poll();
-</script></body></html>
+</script>
+</body>
+</html>

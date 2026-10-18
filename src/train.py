@@ -3,7 +3,7 @@ import csv
 import time
 from pathlib import Path
 import torch
-from .tracks import apply_track
+from .tracks import DEFAULT_TRACK, apply_track
 from .common import ROOT, config, sync
 from .sim.env import BatchedDrivingEnv
 from .rl.networks import ActorCritic
@@ -30,6 +30,8 @@ def main():
     args = p.parse_args()
     if args.live_every < 1 or not 1 <= args.live_fps <= 30 or not 0 <= args.live_port <= 65535:
         p.error("Use positive --live-every, --live-fps from 1 to 30, and a valid port")
+    if not args.config and not args.track and args.obstacles is None:
+        args.track = DEFAULT_TRACK
     cfg = config(args.config or (ROOT / "configs/bendy.yaml" if args.track else None))
     for key in ("device", "num_envs", "obstacles"):
         if getattr(args, key) is not None: cfg[key] = getattr(args, key)
@@ -73,6 +75,8 @@ def main():
                         # Read pre-reset observation for timeout value bootstrapping.
                         b.next_values[t] = model.distribution(info["final_observation"])[1]
                         counts += torch.stack((info["collision"].sum(), info["success"].sum(), (b.terminated[t] | b.truncated[t]).sum()))
+                        if live:
+                            live.capture(info)
                         if live and (t+1) % args.live_every == 0:
                             live.frame(env, transitions=(iteration*cfg["ppo"]["rollout"]+t+1)*env.n)
                 if live:

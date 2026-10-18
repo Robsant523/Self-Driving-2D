@@ -2,7 +2,7 @@ import argparse
 import json
 from pathlib import Path
 import torch
-from .tracks import apply_track
+from .tracks import DEFAULT_TRACK, apply_track
 from .common import ROOT, config
 from .sim.env import BatchedDrivingEnv
 from .rl.networks import ActorCritic
@@ -50,6 +50,8 @@ def main():
     p.add_argument("--obstacles", type=int)
     p.add_argument("--output", type=Path, default=Path("results/evaluation.json"))
     args = p.parse_args()
+    if not args.config and not args.track and not args.checkpoint and args.obstacles is None:
+        args.track = DEFAULT_TRACK
     torch.set_num_threads(4)
     cfg = config(args.config or (ROOT / "configs/bendy.yaml" if args.track else None)); cfg["device"] = args.device
     payload, cfg = load_policy(args.checkpoint, cfg)
