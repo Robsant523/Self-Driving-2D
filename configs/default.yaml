@@ -1,0 +1,35 @@
+seed: 42
+device: auto
+num_envs: 1024
+rays: 16
+ray_range: 20.0
+ray_arc: 2.617993878
+obstacles: 12
+length: 100.0
+width: 12.0
+car_radius: 0.65
+max_steps: 400
+dt: 0.1
+wheelbase: 2.5
+max_steer: 0.55
+max_accel: 4.0
+max_speed: 12.0
+reward:
+  progress: 1.0
+  alive: 0.01
+  jerk: 0.02
+  collision: 20.0
+  success: 20.0
+ppo:
+  hidden: 128
+  rollout: 128
+  updates: 200
+  epochs: 4
+  minibatch: 4096
+  lr: 0.0003
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip: 0.2
+  value_coef: 0.5
+  entropy_coef: 0.001
+  max_grad_norm: 0.5

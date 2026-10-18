@@ -1,0 +1,12 @@
+{
+  "episodes": 500,
+  "seed": 10000,
+  "policy": "untrained",
+  "collision_rate": 0.0,
+  "success_rate": 0.0,
+  "timeout_rate": 1.0,
+  "mean_return": 5.4015212059021,
+  "mean_length": 400.0,
+  "device": "cpu",
+  "obstacles": 12
+}
