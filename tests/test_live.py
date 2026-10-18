@@ -18,13 +18,15 @@ def test_live_server_frame_camera_and_readonly_state():
     cfg=config(ROOT/'configs/bendy.yaml');cfg.update(device='cpu',num_envs=2)
     env=BatchedDrivingEnv(cfg)
     original=env.observe().clone();rng=env.generator.get_state().clone()
-    view=LiveTrainingView(open_browser=False)
+    view=LiveTrainingView(cars=2,open_browser=False)
     try:
         assert view.server.server_address[0]=='127.0.0.1'
         view.frame(env,pace=False,phase='Collecting experience',transitions=2)
         with urlopen(view.url+'/state',timeout=3) as response:
             data=json.load(response)
         assert data['phase']=='Collecting experience' and data['transitions']==2
+        assert data['displayed_cars']==2
+        assert view.renderer.count==2 and view.renderer.layout=='overlay'
         picture=Image.open(io.BytesIO(base64.b64decode(data['frame'])))
         assert picture.size==(1200,480)
         torch.testing.assert_close(env.observe(),original)
@@ -33,6 +35,7 @@ def test_live_server_frame_camera_and_readonly_state():
         with urlopen(request,timeout=3) as response: assert response.status==200
         view.frame(env,pace=False)
         assert view.renderer.camera=='follow'
+        assert view.renderer.count==2 and view.renderer.history is view.history
         for body,origin,status in [(b'{"camera":"bad"}',view.url,400),(b'{"camera":"follow"}','https://example.com',403)]:
             request=Request(view.url+'/camera',data=body,headers={'Content-Type':'application/json','Origin':origin})
             with pytest.raises(HTTPError) as error:urlopen(request,timeout=3)
@@ -46,8 +49,8 @@ def test_live_server_frame_camera_and_readonly_state():
 
 def test_live_training_matches_headless_and_exits(tmp_path):
     common=[sys.executable,'-m','src.train','--track','tracks/presets/gentle_s.yaml',
-            '--device','cpu','--num-envs','2','--updates','1']
-    for name,extra in [('headless',[]),('live',['--live','--no-browser','--live-exit','--live-every','64','--live-fps','30'])]:
+            '--device','cpu','--num-envs','4','--updates','1']
+    for name,extra in [('headless',[]),('live',['--live','--live-cars','4','--no-browser','--live-exit','--live-every','64','--live-fps','30'])]:
         result=subprocess.run(common+extra+['--output',str(tmp_path/name)],cwd=ROOT,capture_output=True,text=True,timeout=60)
         assert result.returncode==0,result.stderr
         assert (tmp_path/name/'learning.png').exists()

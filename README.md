@@ -2,6 +2,20 @@
 
 This is a simplified 2D control experiment, not a photorealistic simulator or an autonomous-driving safety system. Results describe this corridor task only.
 
+## Multiple trial cars
+
+Watch several trials drive simultaneously while every training environment contributes experience to the same PPO model:
+
+```bash
+.venv/bin/python -m src.train --num-envs 512 --live --live-cars 8 --output results/multi-trial-live
+```
+
+`--num-envs` controls how many trials train in parallel; `--live-cars` controls how many of those real trials you see. They share policy weights and pool their rollouts for each update. This learns steering and acceleration rather than constructing one explicit best-path line. More trials do not guarantee faster wall-clock convergence.
+
+On the default course and custom courses with fixed obstacles, the displayed trials appear together on one road with distinct colors and numbered labels. They are **independent trials**, not interacting traffic: they can overlap and do not collide with each other. At the start they may cluster at the same spawn location, then diverge as they explore. Whole track shows every trial's position; Follow car centers on trial 1, so distant trials may leave that view. Sensor arrows in the shared view belong to trial 1, and the minimap shows all displayed cars.
+
+For random obstacle environments, the dashboard automatically uses separate panels because each trial has different obstacles. Each panel shows its own sensors and obstacles. All displayed trials retain their own crash markers through camera changes. No extra simulation cars are created by the viewer, and training results remain identical in the seeded CPU live/headless check.
+
 ## Default course, sensor arrows, and crash history
 
 The default CLI course is now **Long Winding**: ten deep S-bends, a 600 m finish coordinate, approximately 795 m of road, 12 m width, and no obstacles. It is an open winding road, not a closed loop. Run it without selecting a preset:
@@ -14,7 +28,7 @@ Training, recording, and baseline evaluation select this course when no track, c
 
 The dashboard keeps its neutral interface while the road, grass, car, and overlays display in color. Cyan arrows show the actual ray-distance sensors. Three dashed amber arrows point to the 5 m, 12 m, and 20 m road-preview inputs supplied to road policies. These are observations, not steering commands or a planned trajectory. Use **Follow car** to see them clearly on this long course.
 
-Collisions leave faded red car markers at their pre-reset positions and headings. They survive camera switches and episode resets. Markers are visual only and do not become physical obstacles. Each displayed lane retains its most recent 200 crashes within the current run; the live view shows lane 1's crash history. Successes and timeouts do not leave markers. Recording also retains crash history and shows arrows by default; use `record --no-rays` to hide the arrows.
+Collisions leave faded red car markers at their pre-reset positions and headings. They survive camera switches and episode resets. Markers are visual only and do not become physical obstacles. The live view retains a share of up to 200 recent crash markers across its displayed trial cars; camera changes preserve all of them. Recorded grids retain up to 200 markers per displayed lane. Successes and timeouts do not leave markers. Recording also retains crash history and shows arrows by default; use `record --no-rays` to hide the arrows.
 
 Crash poses are captured on-device before automatic reset and transferred with the displayed frames. Rendering does not change training inputs or actions. Restart the live process after updating the code to load these features. Existing checkpoints keep their original track and timeout unless you explicitly override the track.
 
@@ -26,7 +40,7 @@ Add `--live` to training to open a local browser dashboard:
 .venv/bin/python -m src.train --track tracks/presets/gentle_s.yaml --output results/gentle-s-live --live
 ```
 
-The dashboard shows **car 1 from the actual training batch**, including exploratory actions and automatic episode resets. It is not a separate evaluation or prerecorded video. Buttons switch between **Whole track** and **Follow car**. It displays the update number, collected transitions, and the most recent rollout's reward, successes, and collisions across all cars. The image pauses during the PPO optimization phase and the dashboard labels that phase explicitly.
+The dashboard shows **eight actual trial cars by default**, including independent exploratory actions and automatic episode resets. Set `--live-cars` from 1 to 16 to choose how many to display; it is capped by `--num-envs`. Buttons switch between **Whole track** and **Follow car**, which follows trial 1. The colored number labels and dashboard legend identify each trial. It displays the update number, collected transitions, and the most recent rollout's reward, successes, and collisions across all cars. The image pauses during the PPO optimization phase and the dashboard labels that phase explicitly.
 
 Watched training is intentionally paced: defaults display every four simulation steps at up to ten frames per second. This makes movement visible and slows training compared with headless mode. Camera rendering transfers only the displayed lane to CPU. Training rates reported in this mode include visualization and waiting, so do not use them as simulator benchmarks. Rendering does not change actions, rewards, or the policy update; a CPU integration test verifies identical model weights with and without live viewing for a seeded short run.
 

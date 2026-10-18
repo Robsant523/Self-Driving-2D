@@ -1,4 +1,4 @@
-"""Loopback-only dashboard for observing the first actual PPO training lane."""
+"""Loopback-only dashboard for observing the actual PPO trial cars."""
 import base64
 import copy
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -9,13 +9,18 @@ import threading
 import time
 import webbrowser
 from PIL import Image
-from .sim.render import CrashHistory, Renderer
+from .sim.render import CAR_COLORS, CrashHistory, Renderer
 
 
 class LiveTrainingView:
-    def __init__(self, *, camera='overview', fps=10, port=0, open_browser=True):
-        self.history = CrashHistory(1)
-        self.renderer = Renderer(1, camera=camera, show_rays=True, history=self.history)
+    def __init__(self, *, camera='overview', fps=10, port=0, open_browser=True, cars=8):
+        if not 1 <= cars <= 16:
+            raise ValueError('Display 1 to 16 trial cars')
+        self.requested_cars = cars
+        self.count = cars
+        self.layout = 'overlay'
+        self.history = CrashHistory(cars, limit=max(1,200//cars))
+        self.renderer = Renderer(cars, camera=camera, show_rays=True, history=self.history, layout=self.layout)
         self.camera = camera
         self.period = 1 / fps
         self.last_frame = None
@@ -78,7 +83,21 @@ class LiveTrainingView:
         if open_browser:
             webbrowser.open(self.url)
 
+    def _configure(self, count, layout):
+        if count == self.count and layout == self.layout:
+            return
+        if count != self.count:
+            self.history.drain()
+            history = CrashHistory(count, limit=max(1,200//count))
+            for old,new in zip(self.history.cars,history.cars):
+                new.extend(old)
+            self.history = history
+        self.count, self.layout = count, layout
+        self.renderer.close()
+        self.renderer = Renderer(count,camera=self.camera,show_rays=True,history=self.history,layout=layout)
+
     def capture(self, info):
+        self._configure(min(self.requested_cars,len(info['collision'])),self.layout)
         self.history.capture(info)
 
     def status(self, **values):
@@ -91,18 +110,21 @@ class LiveTrainingView:
         self.last_frame = time.monotonic()
         with self.lock:
             camera = self.camera
+        layout = 'overlay' if not env.cfg['obstacles'] or 'fixed_obstacles' in env.cfg else 'grid'
+        self._configure(min(self.requested_cars,env.n),layout)
         if self.renderer.camera != camera:
             self.renderer.close()
-            self.renderer = Renderer(1, camera=camera, show_rays=True, history=self.history)
+            self.renderer = Renderer(self.count, camera=camera, show_rays=True, history=self.history, layout=self.layout)
         # A read-only shallow view: avoid copying/sensing every training car for display.
         lane = copy.copy(env)
-        lane.n = 1
+        lane.n = self.count
         for name in ('pos', 'heading', 'speed', 'last_action', 'obstacles', 'steps'):
-            setattr(lane, name, getattr(env, name)[:1])
+            setattr(lane, name, getattr(env, name)[:self.count])
         rgb = self.renderer.frame(lane, 'live PPO training')
         output = io.BytesIO()
         Image.fromarray(rgb).save(output, format='PNG')
-        self.status(frame=base64.b64encode(output.getvalue()).decode(), camera=camera, crash_count=len(self.history.cars[0]), **values)
+        self.status(frame=base64.b64encode(output.getvalue()).decode(), camera=camera, crash_count=sum(len(cars) for cars in self.history.cars),
+                    displayed_cars=self.count, car_colors=CAR_COLORS[:self.count], layout=self.layout, **values)
 
     def wait(self, env):
         print('Training complete. Live view stays open; press Ctrl+C in Terminal to exit.', flush=True)

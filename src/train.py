@@ -20,6 +20,7 @@ def main():
     p.add_argument("--obstacles", type=int)
     p.add_argument("--resume", type=Path)
     p.add_argument("--live", action="store_true", help="Watch actual training in a local browser")
+    p.add_argument("--live-cars", type=int, default=8, help="Number of actual trial cars to display, 1 to 16")
     p.add_argument("--camera", choices=("follow", "overview"), default="overview")
     p.add_argument("--live-every", type=int, default=4, help="Show a frame every N simulator steps")
     p.add_argument("--live-fps", type=int, default=10, help="Maximum live frames/sec; paces watched training")
@@ -28,6 +29,8 @@ def main():
     p.add_argument("--live-exit", action="store_true", help="Exit immediately when training finishes")
     p.add_argument("--output", type=Path, default=Path("results/train"))
     args = p.parse_args()
+    if not 1 <= args.live_cars <= 16:
+        p.error("--live-cars must be from 1 to 16")
     if args.live_every < 1 or not 1 <= args.live_fps <= 30 or not 0 <= args.live_port <= 65535:
         p.error("Use positive --live-every, --live-fps from 1 to 30, and a valid port")
     if not args.config and not args.track and args.obstacles is None:
@@ -54,7 +57,7 @@ def main():
     if args.live:
         from .live import LiveTrainingView
         live = LiveTrainingView(camera=args.camera, fps=args.live_fps, port=args.live_port,
-                                open_browser=not args.no_browser)
+                                open_browser=not args.no_browser, cars=min(args.live_cars, env.n))
     try:
         if live:
             live.frame(env, pace=False, phase="Starting", update=0, completed_updates=0,
