@@ -1,0 +1,22 @@
+# Easy–medium: a long sweeping bend with three obstacles away from the centerline.
+# Distances in meters; obstacles are absolute [x, y, radius] coordinates.
+name: Wide Sweep
+width: 12.0
+points:
+  - [0, 0]
+  - [12, 0]
+  - [24, 1]
+  - [36, 4]
+  - [48, 8]
+  - [60, 12]
+  - [72, 14]
+  - [84, 14]
+  - [96, 12]
+  - [108, 8]
+  - [120, 4]
+  - [132, 1]
+  - [144, 0]
+obstacles:
+  - [36, 1.0, 0.8]
+  - [78, 17.0, 0.8]
+  - [120, 1.0, 0.8]

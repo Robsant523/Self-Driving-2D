@@ -1,0 +1,24 @@
+# Medium–hard: tighter road edges and repeated bends; no obstacles.
+# Distances in meters; obstacles are absolute [x, y, radius] coordinates.
+name: Narrow Bends
+width: 7.0
+points:
+  - [0, 0]
+  - [12, 0]
+  - [20, 1]
+  - [28, 4]
+  - [36, 6]
+  - [44, 5]
+  - [52, 2]
+  - [60, -2]
+  - [68, -5]
+  - [76, -6]
+  - [84, -4]
+  - [92, 0]
+  - [100, 4]
+  - [108, 6]
+  - [116, 5]
+  - [124, 2]
+  - [132, 0]
+  - [144, 0]
+obstacles: []

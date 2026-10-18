@@ -2,6 +2,89 @@
 
 This is a simplified 2D control experiment, not a photorealistic simulator or an autonomous-driving safety system. Results describe this corridor task only.
 
+## Five preset roads
+
+Ready-made courses are in [tracks/presets](tracks/presets/README.md): **Gentle S**, **Wide Sweep**, **Obstacle Slalom**, **Narrow Bends**, and **Mixed Course**. They vary road width, turns, and fixed obstacles. Start with:
+
+```bash
+.venv/bin/python -m src.train --track tracks/presets/gentle_s.yaml --output results/gentle-s
+```
+
+See the preset guide for course details and recording commands.
+
+## Full-track camera and custom courses
+
+Use `--camera overview` for a fixed view of the entire playable track. `--camera follow` is the default close-up view. Camera selection does not change training or vehicle physics. These commands use the project's virtual environment:
+
+```bash
+.venv/bin/python -m src.record --checkpoint results/bendy/checkpoint.pt --cars 1 --camera overview --frames 300 --output results/bendy-overview.mp4
+open results/bendy-overview.mp4
+```
+
+### Build your own road
+
+Edit [tracks/custom.yaml](tracks/custom.yaml). `points` describe the road centerline in meters, and `obstacles` contain fixed circles as `[x, y, radius]` in world coordinates. For example:
+
+```yaml
+name: My course
+width: 10
+points:
+  - [0, 0]
+  - [20, 0]
+  - [40, 6]
+  - [70, 0]
+obstacles:
+  - [15, 2, 0.8]
+  - [45, 3, 0.7]
+```
+
+On macOS, `open -e tracks/custom.yaml` opens the editable file. Use `obstacles: []` for no obstacles. Road points are joined with straight segments; add intermediate points for smoother bends. Points must start at x=0, end at x>=20, and have strictly increasing x coordinates. Loops, overpasses, and roads that double back are not supported yet. Width is vertical edge separation, as in the original bendy-road environment. Validation rejects nonfinite coordinates, roads too narrow/steep for the car, obstacles outside the road, and obstacles in the first eight meters. It does not guarantee every custom course is solvable; leave enough clearance and avoid abrupt turns.
+
+Preview the geometry, then train:
+
+```bash
+.venv/bin/python -m src.record --track tracks/custom.yaml --road-controller --camera overview --cars 1 --frames 1 --output results/custom-preview.mp4
+.venv/bin/python -m src.train --track tracks/custom.yaml --output results/custom
+.venv/bin/python -m src.evaluate --checkpoint results/custom/checkpoint.pt --output results/custom-evaluation.json
+.venv/bin/python -m src.record --checkpoint results/custom/checkpoint.pt --camera overview --cars 1 --output results/custom-trained.mp4
+open results/custom-trained.mp4
+```
+
+The reference controller follows the centerline and **does not plan around obstacles**. Use it to inspect the road, not as an obstacle-avoidance demonstration. PPO receives obstacle distances and collision penalties, but needs training on the custom course before expecting successful avoidance.
+
+`--track` works with training, evaluation, and recording. Without `--config`, it starts from bendy-road settings, retaining the same 25 inputs. You can initialize from your bendy policy with `--resume results/bendy/checkpoint.pt` during training. You can also test a road policy on another course with `--checkpoint ... --track tracks/another.yaml` during recording/evaluation. Corridor policies with 19 inputs are incompatible. Custom track obstacles replace random spawning; edit the YAML instead of passing `--obstacles`.
+
+Checkpoint configuration embeds the course and obstacle coordinates, so playback does not require the original YAML. Editing YAML does not change an existing checkpoint unless you explicitly pass `--track` to override its course. The camera follows the same geometry used by sensing and collision checks. Custom obstacles remain fixed across resets; evaluation on one course varies spawn offsets, not obstacle layouts.
+
+## New: bendy road and top-down car
+
+`configs/bendy.yaml` adds an obstacle-free S-shaped asphalt road with painted edges, dashed center markings, and a finish line. The car has wheels, steered front tires, windows, and lights. A following camera, speed display, progress indicator, and minimap show its movement through the turns.
+
+Create and open the demo on macOS:
+
+```bash
+python -m src.record --config configs/bendy.yaml --road-controller --cars 1 --frames 300 --output results/bendy-road.mp4
+open results/bendy-road.mp4
+```
+
+The delivered demo uses a **pure-pursuit reference controller with access to the road map**, not a learned policy. Add `--rays` for sensor beams or `--cars 4` for parallel cars.
+
+Train a fresh PPO policy on the bends:
+
+```bash
+python -m src.train --config configs/bendy.yaml --output results/bendy
+python -m src.evaluate --checkpoint results/bendy/checkpoint.pt --output results/bendy-evaluation.json
+python -m src.record --checkpoint results/bendy/checkpoint.pt --cars 1 --output results/bendy-trained.mp4
+```
+
+Start fresh: corridor checkpoints have 19 inputs, while bendy-road policies have **25**. The six extra inputs are normalized lateral offset, sine/cosine of road-relative heading, and three upcoming road bearings. These assume access to a road map. The original corridor configuration and checkpoints keep their existing interface.
+
+Road edges drive ray sensing and swept collision checks as well as rendering. Going off-road ends an episode; reaching the finish succeeds. Reward uses centerline arc progress at the car's x-coordinate, plus small offset and heading penalties. Cars reset facing the road tangent. A conservative circular footprint encloses the car drawing; oriented rectangular body collision is not modeled.
+
+Tune `road.amplitude`, `road.wavelength`, and `road.spacing`, along with world `length` and `width`. Width is vertical separation between edges, so perpendicular width narrows slightly on slopes. This first version has one fixed course: evaluation varies spawn offsets, not course shape. Batched edge sensing uses `(N,R,S)` tensors and is more expensive than corridor sensing.
+
+Validation: **23 passed, 1 skipped**. All eight tested reference-driver episodes finished without collision. A five-update PPO smoke run completed, but its policy has not learned the course. See [feature validation](results/BENDY-VALIDATION.md) for exact results.
+
 ## Quick start
 
 Run from the `driving-rl` directory with Python 3.11 or newer:

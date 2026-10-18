@@ -1,0 +1,19 @@
+# Easy: wide bends with no obstacles; a good first training course.
+# Distances in meters; obstacles are absolute [x, y, radius] coordinates.
+name: Gentle S
+width: 12.0
+points:
+  - [0, 0]
+  - [12, 0]
+  - [24, 2]
+  - [36, 5]
+  - [48, 7]
+  - [60, 7]
+  - [72, 4]
+  - [84, 0]
+  - [96, -4]
+  - [108, -6]
+  - [120, -5]
+  - [132, -2]
+  - [144, 0]
+obstacles: []

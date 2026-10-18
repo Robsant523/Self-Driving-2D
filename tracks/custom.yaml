@@ -1,0 +1,22 @@
+# Edit this file to build your own course. All coordinates are in meters.
+name: custom slalom
+width: 10.0
+# Centerline points, in driving order. x must increase (no loops yet).
+points:
+  - [0, 0]
+  - [15, 0]
+  - [30, 6]
+  - [45, 8]
+  - [60, 2]
+  - [75, -6]
+  - [90, -6]
+  - [110, 3]
+  - [130, 3]
+# Fixed obstacle circles: [x, y, radius]. Use [] for no obstacles.
+# These coordinates are world positions, not offsets from the centerline.
+obstacles:
+  - [25, 5.7, 0.8]
+  - [47, 5.2, 0.9]
+  - [70, -1.6, 0.8]
+  - [94, -6.2, 0.8]
+  - [118, 4.6, 0.9]

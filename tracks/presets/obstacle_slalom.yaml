@@ -1,0 +1,22 @@
+# Medium: six alternating obstacles require steering away from the centerline.
+# Distances in meters; obstacles are absolute [x, y, radius] coordinates.
+name: Obstacle Slalom
+width: 12.0
+points:
+  - [0, 0]
+  - [15, 0]
+  - [30, 1]
+  - [45, 2]
+  - [60, 1]
+  - [75, -1]
+  - [90, -2]
+  - [105, -1]
+  - [120, 0]
+  - [140, 0]
+obstacles:
+  - [24, 1.6, 0.8]
+  - [43, 0.867, 0.8]
+  - [62, 1.733, 0.8]
+  - [81, -2.4, 0.8]
+  - [100, -0.333, 0.8]
+  - [120, -1.0, 0.8]

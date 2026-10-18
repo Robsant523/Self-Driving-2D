@@ -3,7 +3,8 @@ import csv
 import time
 from pathlib import Path
 import torch
-from .common import config, sync
+from .tracks import apply_track
+from .common import ROOT, config, sync
 from .sim.env import BatchedDrivingEnv
 from .rl.networks import ActorCritic
 from .rl.buffer import RolloutBuffer
@@ -12,6 +13,7 @@ from .rl.ppo import update
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--config")
+    p.add_argument("--track", type=Path, help="YAML road points and fixed obstacles")
     p.add_argument("--device", default=None)
     p.add_argument("--num-envs", type=int)
     p.add_argument("--updates", type=int)
@@ -19,10 +21,13 @@ def main():
     p.add_argument("--resume", type=Path)
     p.add_argument("--output", type=Path, default=Path("results/train"))
     args = p.parse_args()
-    cfg = config(args.config)
+    cfg = config(args.config or (ROOT / "configs/bendy.yaml" if args.track else None))
     for key in ("device", "num_envs", "obstacles"):
         if getattr(args, key) is not None: cfg[key] = getattr(args, key)
     if args.updates is not None: cfg["ppo"]["updates"] = args.updates
+    if args.track:
+        if args.obstacles is not None: p.error("Edit obstacles in the track file instead of using --obstacles")
+        cfg = apply_track(cfg, args.track)
     torch.set_num_threads(4)
     torch.manual_seed(cfg["seed"])
     env = BatchedDrivingEnv(cfg)

@@ -1,0 +1,28 @@
+# Hard: a longer winding road with six obstacles placed near bends.
+# Distances in meters; obstacles are absolute [x, y, radius] coordinates.
+name: Mixed Course
+width: 10.0
+points:
+  - [0, 0]
+  - [12, 0]
+  - [24, 2]
+  - [36, 5]
+  - [48, 6]
+  - [60, 3]
+  - [72, -1]
+  - [84, -5]
+  - [96, -6]
+  - [108, -3]
+  - [120, 2]
+  - [132, 6]
+  - [144, 7]
+  - [156, 5]
+  - [168, 2]
+  - [180, 0]
+obstacles:
+  - [27, 4.35, 0.7]
+  - [51, 3.65, 0.8]
+  - [75, -0.4, 0.7]
+  - [102, -6.1, 0.8]
+  - [129, 6.6, 0.7]
+  - [159, 2.65, 0.8]
